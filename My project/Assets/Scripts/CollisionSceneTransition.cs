@@ -1,59 +1,37 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using Oculus.Interaction;
+using System.Collections;
 
-public class GrabSceneTransition : MonoBehaviour
+public class CollisionSceneTransition : MonoBehaviour
 {
+    [Header("Collision Settings")]
+    [Tooltip("The tag of the object that this object should collide with to trigger the scene transition.")]
+    [SerializeField] private string targetTag = "TransitionTrigger";
+
     [Header("Scene Settings")]
     [SerializeField] private string sceneToLoad = "NextScene";
     [SerializeField] private float transitionDelay = 0.5f;
-    
+
     [Header("Optional Transition Effects")]
     [SerializeField] private bool fadeTransition = true;
     [SerializeField] private float fadeTime = 1f;
-    
-    private Grabbable grabbable;
+
     private bool hasTriggered = false;
-    
-    void Start()
+
+    // This script is now attached to the spawned object itself
+    private void OnCollisionEnter(Collision collision)
     {
-        // Get the Grabbable component
-        grabbable = GetComponent<Grabbable>();
-        
-        if (grabbable == null)
-        {
-            Debug.LogError("GrabSceneTransition: No Grabbable component found on " + gameObject.name);
-            return;
-        }
-        
-        // Subscribe to grab events
-        grabbable.WhenPointerEventRaised += OnGrabEvent;
-    }
-    
-    void OnDestroy()
-    {
-        // Unsubscribe to prevent memory leaks
-        if (grabbable != null)
-        {
-            grabbable.WhenPointerEventRaised -= OnGrabEvent;
-        }
-    }
-    
-    private void OnGrabEvent(PointerEvent pointerEvent)
-    {
-        // Check if this is a grab event (not release)
-        if (pointerEvent.Type == PointerEventType.Select && !hasTriggered)
+        // Check if the collided object has the specified tag and the transition hasn't happened yet
+        if (collision.gameObject.CompareTag(targetTag) && !hasTriggered)
         {
             hasTriggered = true;
-            Debug.Log("Object grabbed! Transitioning to scene: " + sceneToLoad);
-            
-            // Validate scene name before loading
+
             if (string.IsNullOrEmpty(sceneToLoad))
             {
                 Debug.LogError("Scene name is empty! Please set the scene name in the inspector.");
                 return;
             }
-            
+
             if (transitionDelay > 0)
             {
                 Invoke(nameof(LoadScene), transitionDelay);
@@ -64,10 +42,12 @@ public class GrabSceneTransition : MonoBehaviour
             }
         }
     }
-    
+
     private void LoadScene()
     {
-        // Disable GrabAndLocate components to prevent null reference errors
+        // Add your logic to disable other components if necessary
+        // For example, if you need to clean up interaction handlers
+        // that exist on this object or others in the scene.
         var grabAndLocates = FindObjectsOfType<Meta.XR.MRUtilityKit.BuildingBlocks.GrabAndLocate>();
         foreach (var component in grabAndLocates)
         {
@@ -86,11 +66,10 @@ public class GrabSceneTransition : MonoBehaviour
             SceneManager.LoadScene(sceneToLoad);
         }
     }
-    
-    private System.Collections.IEnumerator FadeAndLoadScene()
+
+    private IEnumerator FadeAndLoadScene()
     {
-        // You can implement a fade effect here
-        // For now, just wait for fade time then load
+        // Implement your fade effect
         yield return new WaitForSeconds(fadeTime);
         SceneManager.LoadScene(sceneToLoad);
     }
